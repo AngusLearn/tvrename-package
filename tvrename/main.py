@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+# tvrename/main.py
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from colorama import init, Fore, Style
+from glob import glob
+
+from .args import parse_arguments
+from .config import load_config
+from .core import fetch_series_details, process_file
+from .utils import sanitize_filename, extract_from_folder_name #Import extract from folder name function
+import requests  # Import requests here
+
+
+# Regular colors
+yellow = "\033[33m"
+red = "\033[31m"
+green = "\033[32m"
+
+# Bold colors
+yellow_bold = "\033[1;33m"
+red_bold = "\033[1;31m"
+green_bold = "\033[1;32m"
+
+# Reset
+reset = "\033[0m"
+
+# Initialize colorama
+init(autoreset=True)
+
+# Load environment variables from .env file
+load_dotenv(dotenv_path="/etc/tvrename/.env")
+
+# Accessing the API key
+API_KEY = os.getenv("API_KEY")
+
+def main():
+    """Main function to run the tvrename script."""
+    args = parse_arguments()
+
+    # Collect files from all input patterns
+    files = []
+    for input_pattern in args.input:
+        # Resolve input path
+        input_path_str = input_pattern
+        input_path = Path(input_path_str).resolve()
+
+        if '*' in input_path_str:
+            # Find the directory containing the wildcard
+            base_dir = Path(os.path.dirname(input_path_str)).resolve()
+            if not base_dir.exists():
+                print(f"Error: The specified input path does not exist: {base_dir}")
+                continue  # Skip to the next pattern
+
+            # Use glob to find files matching the wildcard
+            found_files = [Path(f).resolve() for f in glob(input_path_str)]
+            if not found_files:
+                print(f"Warning: No files found matching the wildcard: {input_path_str}")  # Changed to warning
+                continue  # Skip to the next pattern
+            files.extend(found_files)
+        else:
+            if not input_path.exists():
+                print(f"Error: The specified input path does not exist: {input_path}")
+                continue  # Skip to the next pattern
+            if input_path.is_file():
+                files.append(input_path)
+            else:  # is directory
+                files.extend([f for f in input_path.iterdir() if f.is_file()])
+
+    if not files:
+        print("Error: No files found based on the provided input patterns.")
+        exit(1)
+
+    # Resolve output path
+    output_path = Path(args.output).resolve() if args.output else None
+
+    # Load configuration
+    config_path = Path(args.input[0]) / ".config" if args.input else Path(".") / ".config"
+    episode_shift = load_config(config_path)
+
+    # Determine current folder name
+    if args.input and args.input != ['.']: #If input is not default value
+        current_folder = Path(args.input[0]).name
+    else:
+        current_folder = Path(".").resolve().name  # Get the real current directory
+    tmdb_id, series_name = None, None
+
+    if args.q:
+        tmdb_id = args.q if args.q.isdigit() else None
+        series_name = args.q if not tmdb_id else None
+    else:
+        tmdb_id, series_name = extract_from_folder_name(current_folder)
+
+    if not tmdb_id and not series_name:
+        print("Error: Could not determine TMDb ID or series name.")
+        exit(1)
+
+    try:
+        series_details = fetch_series_details(tmdb_id or series_name, API_KEY, args.lang)
+        tmdb_id = series_details["id"]
+        series_name = sanitize_filename(series_details["name"])
+        print(f"Series found: {green_bold}{series_name} [tmdbid-{tmdb_id}]{reset}")
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    # Fetch season and episode details
+    details_url = f"https://api.themoviedb.org/3/tv/{tmdb_id}?api_key={API_KEY}&include_adult=true&language={args.lang}"
+    response = requests.get(details_url)
+    if response.status_code != 200:
+        print(f"Failed to fetch series details: {response.status_code}")
+        exit(1)
+
+    details_data = response.json()
+    seasons = details_data.get("seasons", [])
+
+    # Fetch and cache season data
+    season_data_cache = {}
+    for season in seasons:
+        season_number = season["season_number"]
+        if args.season and season_number != args.season:
+            continue
+
+        season_url = f"https://api.themoviedb.org/3/tv/{tmdb_id}/season/{season_number}?api_key={API_KEY}&include_adult=true&language={args.lang}"
+        season_response = requests.get(season_url)
+        if season_response.status_code == 200:
+            season_data_cache[season_number] = season_response.json()
+        else:
+            print(f"Failed to fetch season {season_number} details: {season_response.status_code}")
+            continue
+
+    # Process files using cached data
+    for file in files:
+        if not file.is_file() or "BitComet" in file.name:
+            continue
+
+        process_file(file, series_name, season_data_cache, episode_shift, args, output_path)
+
+
+# Add this block
+if __name__ == "__main__":
+    main()
