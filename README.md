@@ -64,7 +64,7 @@ tvrename [options]
 
 **Options:**
 
-*   `-q SERIES_TITLE_OR_TMDB_ID`, `--q SERIES_TITLE_OR_TMDB_ID`: TMDb ID or series title to search for.
+*   `--q SERIES_TITLE_OR_TMDB_ID`, `--q SERIES_TITLE_OR_TMDB_ID`: TMDb ID or series title to search for.
 *   `--input INPUT`: Path to the input directory or file (supports wildcards). Accepts multiple patterns (e.g. `"*mkv" "*.ass"`). Defaults to the current directory.
 *   `--format FORMAT`: Custom format for renaming files.  Supports placeholders like `{n}` (series name), `{t}` (episode title), and `{s00e00}` (season and episode number).  Also supports `.take(length)` for truncation.
 *   `--lang LANG`: Language for TMDb data (default: `ja-JP`).
@@ -78,19 +78,19 @@ tvrename [options]
 *   **Dry-run rename of all `.mkv` files in the current directory, searching for "My Series" on TMDb:**
 
     ```
-    tvrename --input "*.mkv" -q "My Series" --action dry-run
+    tvrename --input "*.mkv" --q "My Series" --action dry-run
     ```
 
 *   **Rename all `.mkv` and `.ass` files in the "episodes" directory, using TMDb ID 12345, and copy them to the "/output" directory:**
 
     ```
-    tvrename --input "episodes/*mkv" "episodes/*.ass" -q 12345 --output "/output" --action copy
+    tvrename --input "episodes/*mkv" "episodes/*.ass" --q 12345 --output "/output" --action copy
     ```
 
 *   **Rename files in the current directory using a custom format:**
 
     ```
-    tvrename -q "My Series" --format "{n} - {s00e00} - {t.take(30)}" --action rename
+    tvrename --q "My Series" --format "{n} - {s00e00} - {t.take(30)}" --action rename
     ```
 
     (This example truncates the episode title to 30 characters.)
