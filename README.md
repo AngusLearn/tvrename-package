@@ -20,15 +20,6 @@ A command-line tool to rename and organize TV series files automatically using d
 
 ## Installation
 
-    You can install `tvrename` directly from the GitHub repository using `pip`:
-
-    ```
-    pip install git+https://github.com/AngusLearn/tvrename-package.git
-    ```
-    
-    or
-
-
 1.  **Clone the repository:**
 
     ```
@@ -62,7 +53,7 @@ A command-line tool to rename and organize TV series files automatically using d
         4.  Fill out the required information to request an API key.  You may need to provide a brief description of how you plan to use the API.
         5.  Once your request is approved, you will receive your API key.
     *   **Keep your API key safe!**  Treat it like a password and don't share it publicly.
-
+    
 
 5.  **Set the API Key as an Environment Variable:**
 
