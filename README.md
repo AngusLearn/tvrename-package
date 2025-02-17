@@ -131,9 +131,10 @@ Contributions are welcome! If you'd like to contribute to `tvrename`, please fol
 4.  Test your changes thoroughly.
 5.  Submit a pull request.
 
+## Data Source
+
+This script uses the TMDb API to retrieve TV series and episode information. For more information about TMDb, please visit [https://www.themoviedb.org/](https://www.themoviedb.org/).
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).  See the `LICENSE` file for details.
-
-
-

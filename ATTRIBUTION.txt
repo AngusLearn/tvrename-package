@@ -1,0 +1,8 @@
+This project uses the TMDb API, but is not endorsed or certified by TMDb.
+
+TMDb is a community built movie and TV database.
+
+Website: https://www.themoviedb.org/
+
+Please refer to TMDb's terms of service for more information on their API usage:
+https://www.themoviedb.org/documentation/api/terms-of-use
