@@ -43,10 +43,17 @@ A command-line tool to rename and organize TV series files automatically using d
     pip install -e .
     ```
 
-4.  **Obtain a TMDb API Key:**
+4.  **Register an account and obtain a TMDb API Key:**
 
-    *   Create an account on [The Movie Database (TMDb)](https://www.themoviedb.org/).
-    *   Request an API key from TMDb.
+    *   This script requires an API key from [The Movie Database (TMDb)](https://www.themoviedb.org/).
+    *   **Why?** The API key allows the script to fetch series and episode information automatically.
+    *   **How to get an API key:**
+        1.  Go to [https://www.themoviedb.org/](https://www.themoviedb.org/) and click "Join TMDb" to create a free account.
+        2.  After creating your account, log in and navigate to your account settings (usually by clicking your profile picture).
+        3.  Look for a section called "API" or "Request an API Key".
+        4.  Fill out the required information to request an API key.  You may need to provide a brief description of how you plan to use the API.
+        5.  Once your request is approved, you will receive your API key.
+    *   **Keep your API key safe!**  Treat it like a password and don't share it publicly.
 
 5.  **Set the API Key as an Environment Variable:**
 
