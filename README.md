@@ -1,6 +1,6 @@
 # tvrename
 
-A script to rename and organize TV series files automatically using data from The Movie Database (TMDb).
+A command-line tool to rename and organize TV series files automatically using data from The Movie Database (TMDb).
 
 ## Description
 
