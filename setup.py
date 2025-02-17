@@ -20,5 +20,5 @@ setup(
     author='Angus Leung',
     author_email='angus.learn@gmail.com',
     description='A script to rename and organize TV series files.',
-    #url='https://github.com/yourusername/tvrename',  # Replace with your repo URL
+    url='https://github.com/AngusLearn/tvrename-package',  # Replace with your repo URL
 )
