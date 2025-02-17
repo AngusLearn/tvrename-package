@@ -66,7 +66,10 @@ def main():
             if input_path.is_file():
                 files.append(input_path)
             else:  # is directory
-                files.extend([f for f in input_path.iterdir() if f.is_file()])
+                if args.recursive: # Added recursive check
+                    files.extend([f for f in input_path.rglob("*") if f.is_file()]) # ADDED: rglob
+                else:
+                    files.extend([f for f in input_path.iterdir() if f.is_file()])
 
     if not files:
         print("Error: No files found based on the provided input patterns.")
