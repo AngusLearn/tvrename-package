@@ -130,13 +130,25 @@ def main():
             print(f"Failed to fetch season {season_number} details: {season_response.status_code}")
             continue
 
+    # Initialize processed files counter and a flag to check if any file was processed
+    processed_files_count = 0
+    any_file_processed = False
+
     # Process files using cached data
     for file in files:
         if not file.is_file() or "BitComet" in file.name:
             continue
 
-        process_file(file, series_name, season_data_cache, episode_shift, args, output_path)
-
+        #process_file(file, series_name, season_data_cache, episode_shift, args, output_path)
+        if process_file(file, series_name, season_data_cache, episode_shift, args, output_path):
+            processed_files_count += 1
+            any_file_processed = True  # Set the flag to True if any file was processed
+            
+    # Print the total number of processed files
+    if any_file_processed:
+        print(f"{green_bold}Total files processed: {processed_files_count}{reset}")
+    else:
+        print(f"{yellow_bold}No matching files found for processing.{reset}")
 
 # Add this block
 if __name__ == "__main__":
