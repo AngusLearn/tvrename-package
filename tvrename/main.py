@@ -122,7 +122,7 @@ def main():
     season_data_cache = {}
     for season in seasons:
         season_number = season["season_number"]
-        if args.season and season_number != args.season:
+        if args.season is not None and season_number != args.season:
             continue
 
         season_url = f"https://api.themoviedb.org/3/tv/{tmdb_id}/season/{season_number}?api_key={API_KEY}&include_adult=true&language={args.lang}"
