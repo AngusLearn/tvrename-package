@@ -30,9 +30,10 @@ def fetch_series_details(query, api_key, lang="ja-JP"):
         data = response.json()
         if "results" in data and data["results"]:
             return data["results"][0]
-        return data
+        else: # Raise an Exception if no results are found
+            raise Exception(f" =Failure= No series found matching query: {query}")
     else:
-        raise Exception(f"Failed to fetch data from TMDb: {response.status_code} - {response.text}")
+        raise Exception(f" =Failure= to fetch data from TMDb: {response.status_code} - {response.text}")
 
 
 def process_file(file, series_name, season_data_cache, episode_shift, args, output_path):

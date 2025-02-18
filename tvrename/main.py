@@ -105,7 +105,7 @@ def main():
         series_name = sanitize_filename(series_details["name"])
         print(f"Series found: {green_bold}{series_name} [tmdbid-{tmdb_id}]{reset}")
     except Exception as e:
-        print(e)
+        print(f"Error: {e}") #Modified
         exit(1)
 
     # Fetch season and episode details
