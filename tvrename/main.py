@@ -149,7 +149,10 @@ def main():
             
     # Print the total number of processed files
     if any_file_processed:
-        print(f"{green_bold}Total files processed: {processed_files_count}{reset}")
+        if args.action == "dry-run":
+            print(f"{green_bold}Total file(s) going to processe: {processed_files_count}{reset}")
+        else:
+            print(f"{green_bold}Total file(s) processed: {processed_files_count}{reset}")
     else:
         print(f"{yellow_bold}No matching files found for processing.{reset}")
 

@@ -64,14 +64,15 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
             ]
 
             next_patterns = [
+                rf"\[{local_episode_number:02d}\]",
                 rf"^{local_episode_number:02d}\.",
                 rf"- {local_episode_number:02d} -",
                 rf" -{local_episode_number:02d}-",
                 rf"- {local_episode_number:02d} ",
+                rf" {local_episode_number:02d}\[",
                 rf"- {local_episode_number:02d} \[",
                 rf" {local_episode_number:02d}[.| ]",
                 rf"_0?{local_episode_number}_",
-                rf"\[{local_episode_number:02d}\]",
                 rf"\[{local_episode_number:02d}v\d{{1}}\]",
                 rf"第0?{local_episode_number}[話章话巻怪幕節夜]",
                 rf" EP0?{local_episode_number} ",
