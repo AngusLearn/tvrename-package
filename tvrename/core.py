@@ -28,10 +28,15 @@ def fetch_series_details(query, api_key, lang="ja-JP"):
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        if "results" in data and data["results"]:
-            return data["results"][0]
-        else: # Raise an Exception if no results are found
-            raise Exception(f" =Failure= No series found matching query: {query}")
+        if query.isdigit():  # If searching by ID
+            if not data.get("id"):  # Check if 'id' exists in the response
+                raise Exception(f"No series found with ID: {query}")
+            return data
+        else:
+            if "results" in data and data["results"]:
+                return data["results"][0]
+            else: # Raise an Exception if no results are found
+                raise Exception(f" =Failure= No series found matching query: {query}")
     else:
         raise Exception(f" =Failure= to fetch data from TMDb: {response.status_code} - {response.text}")
 
