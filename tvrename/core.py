@@ -1,4 +1,5 @@
 # tvrename/core.py
+import os
 import requests
 import re
 from pathlib import Path
@@ -65,7 +66,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             patterns = [
                 rf"\bS{season_number:02d}E{local_episode_number:02d}\b",
-                rf"\b{season_number}x{local_episode_number:02d}\b",
+                rf"\b{season_number:02d}x{local_episode_number:02d}\b",
                 rf"\b{season_number}xSpecial {local_episode_number}\b",
             ]
 
@@ -89,12 +90,14 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 rf"Episode 0?{local_episode_number}",
                 rf" #0?{local_episode_number}",
                 rf"SP{local_episode_number:02d}",
-                rf"\[.*{local_episode_number:02d}\]",
+                rf"\[{local_episode_number:02d} ?END\]",  # Matches with or without space before 'END'
+                rf"\[OVA ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
                 rf"ACT\.{local_episode_number}",
             ]
 
             for pattern in patterns:
                 if re.search(pattern, file.name, re.IGNORECASE):
+                    # print(f"{pattern} found in {file.name}")
                     new_file_name = f"{new_name}{file.suffix}"
                     final_output_path = (output_path if output_path else file.parent) / new_file_name
 
@@ -125,6 +128,11 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
                         final_output_path.write_bytes(file.read_bytes())
                         print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                    elif args.action == "hardlink":  # NEW ACTION
+                        # Create the parent directories if they don't exist
+                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
+                        os.link(file, final_output_path)
+                        print(f"{green_bold}[HARDLINKED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 
@@ -138,6 +146,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             for next_pattern in next_patterns:
                 if re.search(next_pattern, file.name, re.IGNORECASE):
+                    # print(f"{next_pattern} found in {file.name}")
                     new_file_name = f"{new_name}{file.suffix}"
                     final_output_path = (output_path if output_path else file.parent) / new_file_name
 
@@ -168,6 +177,11 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
                         final_output_path.write_bytes(file.read_bytes())
                         print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                    elif args.action == "hardlink":  # NEW ACTION
+                        # Create the parent directories if they don't exist
+                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
+                        os.link(file, final_output_path)
+                        print(f"{green_bold}[HARDLINKED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 

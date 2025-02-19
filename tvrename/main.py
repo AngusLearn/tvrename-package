@@ -30,7 +30,8 @@ reset = "\033[0m"
 init(autoreset=True)
 
 # Load environment variables from .env file
-load_dotenv(dotenv_path="/etc/tvrename/.env")
+dotenv_path = os.getenv("DOTENV_PATH", "/etc/tvrename/.env")
+load_dotenv(dotenv_path=dotenv_path)
 
 # Accessing the API key
 API_KEY = os.getenv("API_KEY")
@@ -120,17 +121,24 @@ def main():
 
     # Fetch and cache season data
     season_data_cache = {}
-    for season in seasons:
-        season_number = season["season_number"]
+    season_numbers = {season["season_number"] for season in seasons}
+
+    # Add the specified season if it is not in the list
+    if args.season is not None and args.season not in season_numbers:
+        season_numbers.add(args.season)
+
+    for season_number in season_numbers:
         if args.season is not None and season_number != args.season:
+            # print(f"Skipping season {season_number} as it does not match the specified season {args.season}")
             continue
 
         season_url = f"https://api.themoviedb.org/3/tv/{tmdb_id}/season/{season_number}?api_key={API_KEY}&include_adult=true&language={args.lang}"
         season_response = requests.get(season_url)
         if season_response.status_code == 200:
             season_data_cache[season_number] = season_response.json()
+            print(f"Fetched data for season {season_number}")
         else:
-            print(f"Failed to fetch season {season_number} details: {season_response.status_code}")
+            print(f"{red_bold}=Failed= to fetch Season {season_number} details: {season_response.status_code}{reset}")
             continue
 
     # Initialize processed files counter and a flag to check if any file was processed
