@@ -80,7 +80,16 @@ def main():
     output_path = Path(args.output).resolve() if args.output else None
 
     # Load configuration
-    config_path = Path(args.input[0]) / ".config" if args.input else Path(".") / ".config"
+    config_path = None
+    for input_pattern in args.input:
+        input_path = Path(input_pattern).resolve()
+        if input_path.is_dir():
+            config_files = list(input_path.glob("**/.config"))
+            if config_files:
+                config_path = config_files[0]
+                break
+    if not config_path:
+        config_path = Path(".") / ".config"
     episode_shift = load_config(config_path)
 
     # Determine current folder name
@@ -147,6 +156,7 @@ def main():
 
     # Process files using cached data
     for file in files:
+        # print(f"Processing file: {file.name}")
         if not file.is_file() or "BitComet" in file.name:
             continue
 

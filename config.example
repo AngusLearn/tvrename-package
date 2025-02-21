@@ -1,0 +1,3 @@
+# example of shift config, to be placed to source folder, rename it to .config
+[ShiftConfig]
+episode_shift = 0

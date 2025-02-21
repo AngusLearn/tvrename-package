@@ -16,6 +16,9 @@ yellow_bold = "\033[1;33m"
 red_bold = "\033[1;31m"
 green_bold = "\033[1;32m"
 
+# Light blue color
+light_blue = "\033[94m"
+
 # Reset
 reset = "\033[0m"
 
@@ -72,27 +75,26 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             next_patterns = [
                 rf"\[{local_episode_number:02d}\]",
-                rf"^{local_episode_number:02d}\.",
+                rf"^{local_episode_number:02d}\.", # Matches at the beginning of the file name
                 rf"- {local_episode_number:02d} -",
                 rf" -{local_episode_number:02d}-",
                 rf"- {local_episode_number:02d} ",
-                rf" {local_episode_number:02d}\[",
+                rf" {local_episode_number:02d}\[", 
                 rf"- {local_episode_number:02d} \[",
-                rf" {local_episode_number:02d}[.| ]",
-                rf"_0?{local_episode_number}_",
-                rf"\[{local_episode_number:02d}v\d{{1}}\]",
+                rf" {local_episode_number:02d}[.| ]", 
+                rf"_0?{local_episode_number}_", # Matches with or without leading zero
+                rf"\[{local_episode_number:02d}v\d{{1}}\]", # Matches with or without version number
                 rf"第0?{local_episode_number}[話章话巻怪幕節夜]",
                 rf" EP0?{local_episode_number} ",
-                rf".EP{local_episode_number:02d}.",
+                rf"\.EP{local_episode_number:02d}\.", # Matches with dots
                 rf"Vol\.0?{local_episode_number}",
                 rf"Epilogue.0?{local_episode_number}",
-                rf"＃0?{local_episode_number}",
+                rf"＃0?{local_episode_number}", # Full-width hash
                 rf"Episode 0?{local_episode_number}",
                 rf" #0?{local_episode_number}",
                 rf"SP{local_episode_number:02d}",
-                rf"\[{local_episode_number:02d} ?END\]",  # Matches with or without space before 'END'
-                rf"\[OVA ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
-                rf"ACT\.{local_episode_number}",
+                rf"\[{local_episode_number:02d} ?(END|FIN)\]",  # Matches with or without space before END/FIN
+                rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
             ]
 
             for pattern in patterns:
@@ -132,7 +134,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         # Create the parent directories if they don't exist
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
                         os.link(file, final_output_path)
-                        print(f"{green_bold}[HARDLINKED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                        print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 
@@ -181,7 +183,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         # Create the parent directories if they don't exist
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
                         os.link(file, final_output_path)
-                        print(f"{green_bold}[HARDLINKED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                        print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 
