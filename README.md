@@ -57,13 +57,31 @@ A command-line tool to rename and organize TV series files automatically using d
 
 5.  **Set the API Key as an Environment Variable:**
 
-    You need to set the TMDb API key as an environment variable named `API_KEY`. The script looks for this variable in a `.env` file located at `/etc/tvrename/.env`.  Create this file (if it doesn't exist) and add the following line:
+    You need to set the TMDb API key as an environment variable named `API_KEY`. The script looks for this variable in a `.env` file:
+    
+    - **On Windows**: Located at `C:\tvrename\.env`
+    - **On Linux/macOS**: Located at `/etc/tvrename/.env`
 
-    ```
+    Create this file (if it doesn't exist) and add the following line:
+
+    ```plaintext
     API_KEY=YOUR_TMDB_API_KEY
     ```
 
     (Replace `YOUR_TMDB_API_KEY` with your actual API key.)
+
+    **Alternative methods:**
+    - **Windows**: Set environment variable through System Properties:
+      1. Open System Properties (Windows key + Break)
+      2. Click "Environment Variables"
+      3. Under "User variables", click "New"
+      4. Variable name: `API_KEY`
+      5. Variable value: Your TMDb API key
+    
+    - **Linux/macOS**: Set in shell:
+      ```bash
+      export API_KEY=your_tmdb_api_key
+      ```
 
 ## Usage
 
@@ -82,16 +100,24 @@ tvrename [options]
 
 **Examples:**
 
-*   **Dry-run rename of all `.mkv` files in the current directory, searching for "My Series" on TMDb:**
+*   **Dry-run rename of all `.mkv` files in the current directory:**
 
-    ```
+    ```bash
+    # Linux/macOS
+    tvrename --input "*.mkv" --q "My Series" --action dry-run
+    
+    # Windows
     tvrename --input "*.mkv" --q "My Series" --action dry-run
     ```
 
-*   **Rename all `.mkv` and `.ass` files in the "episodes" directory, using TMDb ID 12345, and copy them to the "/output" directory:**
+*   **Rename all `.mkv` and `.ass` files in the "episodes" directory:**
 
-    ```
+    ```bash
+    # Linux/macOS
     tvrename --input "episodes/*mkv" "episodes/*.ass" --q 12345 --output "/output" --action copy
+    
+    # Windows
+    tvrename --input "episodes\*mkv" "episodes\*.ass" --q 12345 --output "D:\output" --action copy
     ```
 
 *   **Rename files in the current directory using a custom format:**
@@ -120,6 +146,20 @@ episode_shift = 1
 
 
 This example sets the episode shift to 1, meaning that the script will subtract 1 from the TMDb episode number to determine the local episode number.
+
+## Platform-Specific Notes
+
+### Windows
+- Use backslashes (`\`) in file paths or forward slashes (`/`)
+- Default `.env` location: `C:\tvrename\.env`
+- Use quotes around wildcard patterns: `"*.mkv"`
+- UNC paths are supported for network locations
+
+### Linux/macOS
+- Use forward slashes (`/`) in file paths
+- Default `.env` location: `/etc/tvrename/.env`
+- Use quotes around wildcard patterns: `"*.mkv"`
+- Shell expansion is supported
 
 ## Contributing
 
