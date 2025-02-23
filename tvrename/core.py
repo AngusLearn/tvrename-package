@@ -74,14 +74,14 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
             ]
 
             next_patterns = [
-                rf"\[{local_episode_number:02d}\]",
+                # rf"\[{local_episode_number:02d}\]",
                 rf"^{local_episode_number:02d}\.", # Matches at the beginning of the file name
-                rf"- {local_episode_number:02d} -",
-                rf" -{local_episode_number:02d}-",
-                rf"- {local_episode_number:02d} ",
-                rf" {local_episode_number:02d}\[", 
-                rf"- {local_episode_number:02d} \[",
-                rf" {local_episode_number:02d}[.| ]", 
+                rf"(-| |\[){local_episode_number:02d}(\]| |-|\[|\.)", 
+                # rf" -{local_episode_number:02d}-",
+                # rf"- {local_episode_number:02d} ",
+                # rf" {local_episode_number:02d}\[", 
+                # rf"(-| ){local_episode_number:02d}( |\[)",
+                # rf" {local_episode_number:02d}[.| ]", 
                 rf"_0?{local_episode_number}_", # Matches with or without leading zero
                 rf"\[{local_episode_number:02d}v\d{{1}}\]", # Matches with or without version number
                 rf"第0?{local_episode_number}[話章话巻怪幕節夜]",
@@ -94,7 +94,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 rf" #0?{local_episode_number}",
                 rf"SP{local_episode_number:02d}",
                 rf"\[{local_episode_number:02d} ?(END|FIN)\]",  # Matches with or without space before END/FIN
-                rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
+                # rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
             ]
 
             for pattern in patterns:

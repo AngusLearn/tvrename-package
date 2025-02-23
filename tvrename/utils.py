@@ -5,6 +5,7 @@ def sanitize_filename(name):
     """Sanitizes a filename by removing or replacing invalid characters."""
     name = name.replace("'", "’")
     name = name.replace("/", "／")
+    name = name.replace("!", "！")
     return re.sub(r'[<>:"/\\|?*]', '', name)
 
 def truncate_string(string, length):

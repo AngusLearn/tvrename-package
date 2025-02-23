@@ -31,6 +31,10 @@ init(autoreset=True)
 
 # Load environment variables from .env file
 dotenv_path = os.getenv("DOTENV_PATH", "/etc/tvrename/.env")
+
+# For Windows compatibility, check for an environment variable with a different path
+if os.name == 'nt':
+    dotenv_path = os.getenv("DOTENV_PATH", "C:\\tvrename\\.env")
 load_dotenv(dotenv_path=dotenv_path)
 
 # Accessing the API key
