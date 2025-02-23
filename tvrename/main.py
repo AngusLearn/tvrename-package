@@ -37,7 +37,12 @@ else:
 
 # Then use the default path
 dotenv_path = os.getenv("DOTENV_PATH", default_env_path)
-load_dotenv(dotenv_path=dotenv_path)
+
+# Check if the .env file exists before loading
+if Path(dotenv_path).exists():
+    load_dotenv(dotenv_path=dotenv_path)
+else:
+    print(f"Warning: .env file not found at {dotenv_path}")
 
 # Accessing the API key
 API_KEY = os.getenv("API_KEY")
