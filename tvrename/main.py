@@ -29,12 +29,14 @@ reset = "\033[0m"
 # Initialize colorama
 init(autoreset=True)
 
-# Load environment variables from .env file
-dotenv_path = os.getenv("DOTENV_PATH", "/etc/tvrename/.env")
-
-# For Windows compatibility, check for an environment variable with a different path
+# Default path based on OS
 if os.name == 'nt':
-    dotenv_path = os.getenv("DOTENV_PATH", "C:\\tvrename\\.env")
+    default_env_path = "C:\\tvrename\\.env"
+else:
+    default_env_path = "/etc/tvrename/.env"
+
+# Then use the default path
+dotenv_path = os.getenv("DOTENV_PATH", default_env_path)
 load_dotenv(dotenv_path=dotenv_path)
 
 # Accessing the API key
