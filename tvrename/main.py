@@ -31,9 +31,9 @@ init(autoreset=True)
 
 # Default path based on OS
 if os.name == 'nt':
-    print("This is a Windows system.")
+    # print("This is a Windows system.")
     default_env_path = "C:\\tvrename\\.env"
-    print(f"{yellow}Warning: Default .env path for Windows is {default_env_path}{reset}")
+    # print(f"{yellow}Warning: Default .env path for Windows is {default_env_path}{reset}")
 else:
     default_env_path = "/etc/tvrename/.env"
 
