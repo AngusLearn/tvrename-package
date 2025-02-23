@@ -32,6 +32,7 @@ init(autoreset=True)
 # Default path based on OS
 if os.name == 'nt':
     default_env_path = "C:\\tvrename\\.env"
+    print(f"{yellow}Warning: Default .env path for Windows is {default_env_path}{reset}")
 else:
     default_env_path = "/etc/tvrename/.env"
 
@@ -44,8 +45,15 @@ if Path(dotenv_path).exists():
 else:
     print(f"Warning: .env file not found at {dotenv_path}")
 
-# Accessing the API key
+# After loading the API key, add validation
 API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    print(f"{red_bold}Error: API_KEY not found in environment variables{reset}")
+    print(f"Please ensure your API key is set in {dotenv_path}")
+    print("You can:")
+    print("1. Create a .env file with: API_KEY=your_tmdb_api_key")
+    print("2. Or set the environment variable: export API_KEY=your_tmdb_api_key")
+    exit(1)
 
 def main():
     """Main function to run the tvrename script."""
