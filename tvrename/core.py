@@ -10,6 +10,7 @@ from colorama import init, Fore, Style
 yellow = "\033[33m"
 red = "\033[31m"
 green = "\033[32m"
+cyan = Fore.CYAN
 
 # Bold colors
 yellow_bold = "\033[1;33m"
@@ -131,10 +132,40 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         final_output_path.write_bytes(file.read_bytes())
                         print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
                     elif args.action == "hardlink":  # NEW ACTION
-                        # Create the parent directories if they don't exist
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        os.link(file, final_output_path)
-                        print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
+                        if final_output_path.exists():
+                            # Check if destination file has same inode as source
+                            if os.stat(file).st_ino == os.stat(final_output_path).st_ino:
+                                if args.rename_hardlink:
+                                    # Remove existing hardlink and create new one with new name
+                                    final_output_path.unlink()
+                                    os.link(file, final_output_path)
+                                    print(f"{green_bold}[RENAMED HARDLINK]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                                else:
+                                    # Skip if rename_hardlink is false
+                                    print(f"{yellow}[SKIPPED]{reset} Hardlink already exists: {final_output_path}")
+                            else:
+                                print(f"{red}[ERROR]{reset} File exists with different inode: {final_output_path}")
+                        else:
+                            # Check for files with same inode in destination directory
+                            same_inode_files = [f for f in final_output_path.parent.iterdir() 
+                                              if f.is_file() and os.stat(f).st_ino == os.stat(file).st_ino]
+                            
+                            if same_inode_files:
+                                if args.rename_hardlink:
+                                    # Remove old hardlinks and create new one
+                                    for old_link in same_inode_files:
+                                        old_link.unlink()
+                                        print(f"{cyan}[REMOVED OLD HARDLINK]{reset} {old_link}")
+                                    os.link(file, final_output_path)
+                                    print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
+                                else:
+                                    # Keep existing hardlink
+                                    print(f"{yellow}[SKIPPED]{reset} Keeping existing hardlink: {same_inode_files[0]}")
+                            else:
+                                # Create new hardlink if no existing ones found
+                                os.link(file, final_output_path)
+                                print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 
@@ -180,10 +211,40 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                         final_output_path.write_bytes(file.read_bytes())
                         print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
                     elif args.action == "hardlink":  # NEW ACTION
-                        # Create the parent directories if they don't exist
                         final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        os.link(file, final_output_path)
-                        print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
+                        if final_output_path.exists():
+                            # Check if destination file has same inode as source
+                            if os.stat(file).st_ino == os.stat(final_output_path).st_ino:
+                                if args.rename_hardlink:
+                                    # Remove existing hardlink and create new one with new name
+                                    final_output_path.unlink()
+                                    os.link(file, final_output_path)
+                                    print(f"{green_bold}[RENAMED HARDLINK]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                                else:
+                                    # Skip if rename_hardlink is false
+                                    print(f"{yellow}[SKIPPED]{reset} Hardlink already exists: {final_output_path}")
+                            else:
+                                print(f"{red}[ERROR]{reset} File exists with different inode: {final_output_path}")
+                        else:
+                            # Check for files with same inode in destination directory
+                            same_inode_files = [f for f in final_output_path.parent.iterdir() 
+                                              if f.is_file() and os.stat(f).st_ino == os.stat(file).st_ino]
+                            
+                            if same_inode_files:
+                                if args.rename_hardlink:
+                                    # Remove old hardlinks and create new one
+                                    for old_link in same_inode_files:
+                                        old_link.unlink()
+                                        print(f"{cyan}[REMOVED OLD HARDLINK]{reset} {old_link}")
+                                    os.link(file, final_output_path)
+                                    print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
+                                else:
+                                    # Keep existing hardlink
+                                    print(f"{yellow}[SKIPPED]{reset} Keeping existing hardlink: {same_inode_files[0]}")
+                            else:
+                                # Create new hardlink if no existing ones found
+                                os.link(file, final_output_path)
+                                print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
                     file_processed = True
                     break
 
