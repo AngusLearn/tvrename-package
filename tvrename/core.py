@@ -68,33 +68,62 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 new_name = apply_truncation(new_name, "t", episode_title)
                 new_name = new_name.replace("{s00e00}", f"S{season_number:02d}E{tmdb_episode_number:02d}")
 
+            multi_episode_match = re.search(
+                rf"\bS{season_number:02d}E{local_episode_number:02d}-(\d{{2,3}})\b",
+                file.name,
+                re.IGNORECASE,
+            )
+            if multi_episode_match:
+                range_end = int(multi_episode_match.group(1))
+                if range_end >= local_episode_number:
+                    episode_titles = [
+                        sanitize_filename(ep["name"])
+                        for ep in episodes
+                        if local_episode_number <= ep["episode_number"] <= range_end
+                    ]
+                    if episode_titles:
+                        range_str = f"S{season_number:02d}E{local_episode_number:02d}-{range_end:02d}"
+                        title_str = " ／ ".join(episode_titles)
+                        if not args.format:
+                            new_name = f"{series_name} - {range_str} - {title_str}"
+                        else:
+                            new_name = args.format
+                            new_name = apply_truncation(new_name, "n", series_name)
+                            new_name = apply_truncation(new_name, "t", title_str)
+                            new_name = new_name.replace("{s00e00}", range_str)
+
             patterns = [
                 rf"\bS{season_number:02d}E{local_episode_number:02d}\b",
                 rf"\b{season_number:02d}x{local_episode_number:02d}\b",
                 rf"\b{season_number}xSpecial {local_episode_number}\b",
+                rf"(-| |\[)S{season_number:02d}E{local_episode_number:02d}v\d{{1}}(\]| |-|\[|\.)",
             ]
 
             next_patterns = [
                 # rf"\[{local_episode_number:02d}\]",
                 rf"^{local_episode_number:02d}\.", # Matches at the beginning of the file name
                 rf"(-| |\[){local_episode_number:02d}(\]| |-|\[|\.)", 
+                rf"(-| |\[){local_episode_number:03d}(\]| |-|\[|\.)",
                 # rf" -{local_episode_number:02d}-",
                 # rf"- {local_episode_number:02d} ",
                 # rf" {local_episode_number:02d}\[", 
                 # rf"(-| ){local_episode_number:02d}( |\[)",
                 # rf" {local_episode_number:02d}[.| ]", 
                 rf"_0?{local_episode_number}_", # Matches with or without leading zero
-                rf"\[{local_episode_number:02d}v\d{{1}}\]", # Matches with or without version number
+                rf"(-| |\[){local_episode_number:02d}v\d{{1}}(\]| |-|\[|\.)", # Matches with or without version number
                 rf"第0?{local_episode_number}[話章话巻怪幕節夜]",
                 rf" EP0?{local_episode_number} ",
+                rf" E0?{local_episode_number} ",
                 rf"\.EP{local_episode_number:02d}\.", # Matches with dots
                 rf"Vol\.0?{local_episode_number}",
                 rf"Epilogue.0?{local_episode_number}",
                 rf"＃0?{local_episode_number}", # Full-width hash
                 rf"Episode 0?{local_episode_number}",
                 rf" #0?{local_episode_number}",
+                rf"(-| |\[|)#({local_episode_number}|{local_episode_number:02d}) ",
                 rf"SP{local_episode_number:02d}",
                 rf"\[{local_episode_number:02d} ?(END|FIN)\]",  # Matches with or without space before END/FIN
+                rf"Part\.0?{local_episode_number}",
                 # rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
             ]
 
