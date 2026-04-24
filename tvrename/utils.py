@@ -9,6 +9,7 @@ def sanitize_filename(name):
     name = name.replace("'", "’")
     name = name.replace("/", "／")
     name = name.replace("!", "！")
+    name = name.replace(";", "；")
     return re.sub(r'[<>:"/\\|?*]', '', name)
 
 def truncate_string(string, length):
@@ -29,3 +30,18 @@ def extract_from_folder_name(folder_name):
     if tmdb_id_match:
         return tmdb_id_match.group(1), None
     return None, folder_name
+
+def get_full_extension(filename):
+    """Gets the full extension for subtitle files, including language codes."""
+    subtitle_exts = ['.ass', '.srt', '.ssa', '.sub', '.vtt', '.smi', '.lrc', '.txt']
+    for ext in subtitle_exts:
+        if filename.lower().endswith(ext):
+            # Check for language code before the extension
+            pattern = rf'(\.[a-zA-Z0-9-]+)?{re.escape(ext)}$'
+            match = re.search(pattern, filename, re.IGNORECASE)
+            if match:
+                lang_part = match.group(1) if match.group(1) else ''
+                return lang_part + ext
+    # For non-subtitle files, return the standard suffix
+    from pathlib import Path
+    return Path(filename).suffix
