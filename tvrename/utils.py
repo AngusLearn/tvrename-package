@@ -1,5 +1,6 @@
 # tvrename/utils.py
 import re
+import unicodedata
 
 def sanitize_filename(name):
     """Sanitizes a filename by removing or replacing invalid characters."""
@@ -45,3 +46,9 @@ def get_full_extension(filename):
     # For non-subtitle files, return the standard suffix
     from pathlib import Path
     return Path(filename).suffix
+
+def normalize_filename(filename):
+    # NFKC normalization converts full-width characters to half-width
+    normalized = unicodedata.normalize('NFKC', filename)
+    return normalized
+

@@ -13,4 +13,6 @@ def parse_arguments():
     parser.add_argument("--action", choices=["dry-run", "rename", "copy", "hardlink"], default="dry-run", help="Action to perform (default: dry-run).")
     parser.add_argument("-r", "--recursive", action="store_true", help="Process files recursively in the input directory.")
     parser.add_argument("--rename-hardlink", action="store_true", help="When using hardlink, rename the destination file if it has the same inode but a different name. Use only with --action hardlink.")
+    parser.add_argument("--title-match", action="store_true", help="Use fuzzy matching for episode titles using pykakasi and rapidfuzz.")
     return parser.parse_args()
+

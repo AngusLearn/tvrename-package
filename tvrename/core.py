@@ -3,7 +3,7 @@ import os
 import requests
 import re
 from pathlib import Path
-from .utils import sanitize_filename, apply_truncation, get_full_extension  # Relative import
+from .utils import sanitize_filename, apply_truncation, get_full_extension, normalize_filename # Relative import
 from colorama import init, Fore, Style
 
 # Regular colors
@@ -76,7 +76,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             multi_episode_match = None
             for pattern in multi_episode_patterns:
-                multi_episode_match = re.search(pattern, file.name, re.IGNORECASE)
+                multi_episode_match = re.search(pattern, normalize_filename(file.name), re.IGNORECASE)
                 if multi_episode_match:
                     break
 
@@ -101,15 +101,16 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             patterns = [
                 rf"\bS{season_number:02d}E{local_episode_number:02d}\b",
-                rf"\b{season_number:02d}x{local_episode_number:02d}\b",
+                rf"\bS{season_number:02d}EP{local_episode_number:02d}\b",
+                rf"\b0?{season_number}x{local_episode_number:02d}\b",
                 rf"\b{season_number}xSpecial {local_episode_number}\b",
-                rf"(-| |\[)S{season_number:02d}E{local_episode_number:02d}v\d{{1}}(\]| |-|\[|\.)",
+                rf"(-| |\[|.)S{season_number:02d}E{local_episode_number:02d}v\d{{1}}(\]| |-|\[|\.)",
             ]
 
             next_patterns = [
                 # rf"\[{local_episode_number:02d}\]",
-                rf"^{local_episode_number:02d}\.", # Matches at the beginning of the file name
-                rf"(-| |\[){local_episode_number:02d}(\]| |-|\[|\.)", 
+                rf"^0?{local_episode_number}(\.| )", # Matches at the beginning of the file name
+                rf"(-| |\[|\()0?{local_episode_number}(\]| |-|\[|\.|\))", 
                 rf"(-| |\[){local_episode_number:03d}(\]| |-|\[|\.)",
                 # rf" -{local_episode_number:02d}-",
                 # rf"- {local_episode_number:02d} ",
@@ -118,9 +119,9 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 # rf" {local_episode_number:02d}[.| ]", 
                 rf"_0?{local_episode_number}_", # Matches with or without leading zero
                 rf"(-| |\[|_){local_episode_number:02d}v\d{{1}}(\(|\]| |-|\[|\.|_)", # Matches with or without version number
-                rf"第0?{local_episode_number}[話章话巻怪幕節夜]",
+                rf"第0?{local_episode_number}[弾話章话巻怪幕節夜回]",
                 rf" EP0?{local_episode_number} ",
-                rf"( |_)Ep0?{local_episode_number}( |\.)",
+                rf"( |_)Ep0?{local_episode_number}(_| |\.)",
                 rf" E0?{local_episode_number} ",
                 rf"\.EP{local_episode_number:02d}\.", # Matches with dots
                 rf"Vol\.0?{local_episode_number}",
@@ -135,9 +136,9 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 rf"Part\.0?{local_episode_number}",
                 # rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
             ]
-
+            
             for pattern in patterns:
-                if re.search(pattern, file.name, re.IGNORECASE):
+                if re.search(pattern, normalize_filename(file.name), re.IGNORECASE):
                     # print(f"{pattern} found in {file.name}")
                     new_file_name = f"{new_name}{get_full_extension(file.name)}"
                     final_output_path = (output_path if output_path else file.parent) / new_file_name
@@ -216,7 +217,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 continue
 
             for next_pattern in next_patterns:
-                if re.search(next_pattern, file.name, re.IGNORECASE):
+                if re.search(next_pattern, normalize_filename(file.name), re.IGNORECASE):
                     # print(f"{next_pattern} found in {file.name}")
                     new_file_name = f"{new_name}{get_full_extension(file.name)}"
                     final_output_path = (output_path if output_path else file.parent) / new_file_name
