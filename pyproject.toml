@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tvrename"
+version = "0.1.0"
+description = "A command-line tool to rename and organize TV series files."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Angus Learn", email = "angus.learn@gmail.com"}
+]
+requires-python = ">=3.8"
+dependencies = [
+    "requests",
+    "python-dotenv",
+    "colorama",
+]
+
+[project.urls]
+Homepage = "https://github.com/AngusLearn/tvrename-package"
+
+[project.scripts]
+tvrename = "tvrename.main:main"

@@ -1,36 +1,44 @@
 # tvrename/core.py
 import os
+import shutil
 import requests
 import re
 from pathlib import Path
-from .utils import sanitize_filename, apply_truncation, get_full_extension, normalize_filename # Relative import
-from colorama import init, Fore, Style
+from .utils import sanitize_filename, apply_truncation, get_full_extension, normalize_filename, yellow, green, yellow_bold, red_bold, green_bold, light_blue, reset
 
-# Regular colors
-yellow = "\033[33m"
-red = "\033[31m"
-green = "\033[32m"
-cyan = Fore.CYAN
 
-# Bold colors
-yellow_bold = "\033[1;33m"
-red_bold = "\033[1;31m"
-green_bold = "\033[1;32m"
+def _match_quality(normalized, match_obj, matched_name, episode_num):
+    """Score match quality. Higher = more specific/precise."""
+    text = match_obj.group()
+    if not text:
+        return 40
 
-# Light blue color
-light_blue = "\033[94m"
-
-# Reset
-reset = "\033[0m"
+    if re.search(r'S\d{2}E\d{2}', text, re.IGNORECASE):
+        return 100
+    if text.lstrip().startswith('-'):
+        return 90
+    if text.lstrip()[0] in '([':
+        return 80
+    if re.match(r'[Ee]p', text):
+        return 75
+    if 'Vol' in text:
+        return 70
+    if text.lstrip().startswith('#'):
+        return 65
+    if re.search(r'\d{2}', text):
+        return 60
+    return 50
 
 
 def fetch_series_details(query, api_key, lang="ja-JP"):
     """Fetches series details from TMDb."""
+    params = {"api_key": api_key, "include_adult": "true", "language": lang}
     if query.isdigit():
-        url = f"https://api.themoviedb.org/3/tv/{query}?api_key={api_key}&include_adult=true&language={lang}"
+        url = f"https://api.themoviedb.org/3/tv/{query}"
     else:
-        url = f"https://api.themoviedb.org/3/search/tv?query={query}&api_key={api_key}&include_adult=true&language={lang}"
-    response = requests.get(url)
+        url = "https://api.themoviedb.org/3/search/tv"
+        params["query"] = query
+    response = requests.get(url, params=params, timeout=30)
     if response.status_code == 200:
         data = response.json()
         if query.isdigit():  # If searching by ID
@@ -46,16 +54,117 @@ def fetch_series_details(query, api_key, lang="ja-JP"):
         raise Exception(f" =Failure= to fetch data from TMDb: {response.status_code} - {response.text}")
 
 
+def _clean_old_hardlinks(output_path, source_file, new_hardlink_path):
+    """Remove old hardlinks in destination dir with same inode as source."""
+    dest_dir = Path(output_path) if output_path else None
+    if not dest_dir or not dest_dir.exists():
+        return
+
+    source_inode = source_file.stat().st_ino
+
+    for f in dest_dir.rglob("*"):
+        if f.is_file() and f.resolve() != new_hardlink_path.resolve():
+            try:
+                if f.stat().st_ino == source_inode:
+                    f.unlink()
+            except OSError:
+                pass
+
+
+def _perform_action(file, final_output_path, source_file_name, destin_file_name, args):
+    """Performs the rename/copy/hardlink action with error handling."""
+    final_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if final_output_path.exists() and not (args.action == "hardlink" and args.rename_hardlink):
+        if args.action == "dry-run":
+            print(f"{yellow}[DRY-RUN]{reset} {red_bold}[SKIPPING]{reset} {source_file_name} {yellow}->{reset} {destin_file_name} {red_bold}(Target file already exists){reset}")
+        else:
+            print(f"{red_bold}[SKIPPING]{reset} {source_file_name} {red_bold}->{reset} {destin_file_name} {red_bold}(Target file already exists){reset}")
+        return "skip"
+
+    if args.action == "dry-run":
+        print(f"{yellow_bold}[DRY-RUN]{reset} {green}[RENAME]{reset} {source_file_name} {yellow_bold}->{reset} {destin_file_name}")
+    elif args.action == "rename":
+        try:
+            file.rename(final_output_path)
+            print(f"{green_bold}[RENAMED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+            return "success"
+        except OSError as e:
+            if e.errno == 18:  # cross-device link
+                print(f"{yellow}[INFO]{reset} Cross-device move detected, using fallback for {source_file_name}")
+                try:
+                    shutil.move(str(file), str(final_output_path))
+                    print(f"{green_bold}[MOVED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                    return "success"
+                except OSError as e2:
+                    print(f"{red_bold}[ERROR]{reset} Failed to move {source_file_name}: {e2}")
+                    return "error"
+            else:
+                print(f"{red_bold}[ERROR]{reset} Failed to rename {source_file_name}: {e}")
+                return "error"
+    elif args.action == "copy":
+        try:
+            final_output_path.write_bytes(file.read_bytes())
+            print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+            return "success"
+        except OSError as e:
+            print(f"{red_bold}[ERROR]{reset} Failed to copy {source_file_name}: {e}")
+            return "error"
+    elif args.action == "hardlink":
+        # Hardlink in the same directory is not a valid action — there's no
+        # way to distinguish "origin" from "hardlinks" once the folder is
+        # populated, and episode name changes on TMDB would create yet
+        # another hardlink with no way to know which is the original.
+        if file.parent == final_output_path.parent:
+            print(f"{yellow}[SKIPPED]{reset} Hardlink in the same directory is not supported: {source_file_name}")
+            return "skip"
+
+        try:
+            if final_output_path.exists():
+                if os.stat(file).st_ino == os.stat(final_output_path).st_ino:
+                    if args.rename_hardlink:
+                        _clean_old_hardlinks(args.output, file, final_output_path)
+                    print(f"{yellow}[SKIPPED]{reset} Hardlink already exists: {final_output_path}")
+                    return "skip"
+                else:
+                    final_output_path.unlink()
+                    os.link(file, final_output_path)
+                    print(f"{green_bold}[RENAMED HARDLINK]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
+                    if args.rename_hardlink:
+                        _clean_old_hardlinks(args.output, file, final_output_path)
+                    return "success"
+            else:
+                os.link(file, final_output_path)
+                print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
+                if args.rename_hardlink:
+                    _clean_old_hardlinks(args.output, file, final_output_path)
+                return "success"
+        except OSError as e:
+            print(f"{red_bold}[ERROR]{reset} Failed to create hardlink for {source_file_name}: {e}")
+            return "error"
+    return "success"
+
+
 def process_file(file, series_name, season_data_cache, episode_shift, args, output_path):
-    """Processes a single file, attempting to rename it based on TMDb data."""
-    file_processed = False
+    """Processes a single file, attempting to rename it based on TMDb data.
+
+    Uses two-phase matching: first collects ALL possible matches across all
+    episodes, then picks the best one by match quality score.
+    """
+    normalized = normalize_filename(file.name)
+
+    # PHASE 1: Collect all possible matches with their quality scores
+    all_matches = []
+
     for season_number, season_data in season_data_cache.items():
         episodes = season_data.get("episodes", [])
+        if not episodes:
+            continue
+
         for episode in episodes:
             tmdb_episode_number = episode["episode_number"]
             local_episode_number = tmdb_episode_number - episode_shift
 
-            # Allow zero-based local numbering (e.g. file uses 00 for episode 1)
             if local_episode_number < 0:
                 continue
 
@@ -76,7 +185,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
 
             multi_episode_match = None
             for pattern in multi_episode_patterns:
-                multi_episode_match = re.search(pattern, normalize_filename(file.name), re.IGNORECASE)
+                multi_episode_match = re.search(pattern, normalized, re.IGNORECASE)
                 if multi_episode_match:
                     break
 
@@ -86,7 +195,7 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                     episode_titles = [
                         sanitize_filename(ep["name"])
                         for ep in episodes
-                        if local_episode_number <= ep["episode_number"] <= range_end
+                        if tmdb_episode_number <= ep["episode_number"] <= range_end
                     ]
                     if episode_titles:
                         range_str = f"S{season_number:02d}E{local_episode_number:02d}-{range_end:02d}"
@@ -104,187 +213,47 @@ def process_file(file, series_name, season_data_cache, episode_shift, args, outp
                 rf"\bS{season_number:02d}EP{local_episode_number:02d}\b",
                 rf"\b0?{season_number}x{local_episode_number:02d}\b",
                 rf"\b{season_number}xSpecial {local_episode_number}\b",
-                rf"(-| |\[|.)S{season_number:02d}E{local_episode_number:02d}v\d{{1}}(\]| |-|\[|\.)",
+                rf"(-| |\[|.)S{season_number:02d}E{local_episode_number:02d}(?:v\d{{1}})?(\]| |-|\[|\.)",
             ]
 
             next_patterns = [
-                # rf"\[{local_episode_number:02d}\]",
-                rf"^0?{local_episode_number}(\.| )", # Matches at the beginning of the file name
-                rf"(-| |\[|\()0?{local_episode_number}(\]| |-|\[|\.|\))", 
+                rf"^0?{local_episode_number}(\.| )",
+                rf"(-| |\[|\()0?{local_episode_number}(\]| |-|\[|\.|\))",
                 rf"(-| |\[){local_episode_number:03d}(\]| |-|\[|\.)",
-                # rf" -{local_episode_number:02d}-",
-                # rf"- {local_episode_number:02d} ",
-                # rf" {local_episode_number:02d}\[", 
-                # rf"(-| ){local_episode_number:02d}( |\[)",
-                # rf" {local_episode_number:02d}[.| ]", 
-                rf"_0?{local_episode_number}_", # Matches with or without leading zero
-                rf"(-| |\[|_){local_episode_number:02d}v\d{{1}}(\(|\]| |-|\[|\.|_)", # Matches with or without version number
+                rf"_0?{local_episode_number}_",
+                rf"(-| |\[|_){local_episode_number:02d}v\d{{1}}(\(|\]| |-|\[|\.|_)",
                 rf"第0?{local_episode_number}[弾話章话巻怪幕節夜回]",
                 rf" EP0?{local_episode_number} ",
                 rf"( |_)Ep0?{local_episode_number}(_| |\.)",
                 rf" E0?{local_episode_number} ",
-                rf"\.EP{local_episode_number:02d}\.", # Matches with dots
+                rf"\.EP{local_episode_number:02d}\.",
                 rf"Vol\.0?{local_episode_number}",
                 rf"Epilogue.0?{local_episode_number}",
-                rf"＃0?{local_episode_number}", # Full-width hash
+                rf"＃0?{local_episode_number}",
                 rf"Episode 0?{local_episode_number}",
                 rf" #0?{local_episode_number}",
                 rf"(-| |\[|)#({local_episode_number}|{local_episode_number:02d}) ",
                 rf"SP{local_episode_number:02d}",
                 rf"\[{local_episode_number:02d} ?(END|FIN)\]",
-                rf"\[{local_episode_number:02d}_?(END|FIN)\]",  # Matches with or without space before END/FIN
+                rf"\[{local_episode_number:02d}_?(END|FIN)\]",
                 rf"Part\.0?{local_episode_number}",
-                # rf"\[(OAD|OVA) ?{local_episode_number:02d}\]",  # Matches with or without space before episode number
             ]
-            
-            for pattern in patterns:
-                if re.search(pattern, normalize_filename(file.name), re.IGNORECASE):
-                    # print(f"{pattern} found in {file.name}")
+
+            # Collect matches for this episode
+            for pattern in patterns + next_patterns:
+                m = re.search(pattern, normalized, re.IGNORECASE)
+                if m:
+                    score = _match_quality(normalized, m, new_name, local_episode_number)
                     new_file_name = f"{new_name}{get_full_extension(file.name)}"
-                    final_output_path = (output_path if output_path else file.parent) / new_file_name
-
-                    output_parent = str(Path(final_output_path).parent)
-                    file_parent = str(Path(file).parent)
-
-                    if output_parent == file_parent:
-                        destin_file_name = str(Path(final_output_path).relative_to(output_parent))
-                        source_file_name = str(Path(file).relative_to(output_parent))
-                    else:
-                        destin_file_name = final_output_path
-                        source_file_name = file
-
-                    if final_output_path.exists():
-                        if args.action == "dry-run":
-                            print(f"{Fore.YELLOW}[DRY-RUN]{Style.RESET_ALL} {red_bold}[SKIPPING]{reset} {source_file_name} {Fore.YELLOW}->{Style.RESET_ALL} {destin_file_name} {red_bold}(Target file already exists){reset}")
-                        else:
-                            print(f"{red_bold}[SKIPPING]{reset} {source_file_name} {red_bold}->{reset} {destin_file_name} {red_bold}(Target file already exists){reset}")
-                        break
-
-                    if args.action == "dry-run":
-                        print(f"{yellow_bold}[DRY-RUN]{reset} {Fore.GREEN}[RENAME]{Style.RESET_ALL} {source_file_name} {yellow_bold}->{reset} {destin_file_name}")
-                    elif args.action == "rename":
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        file.rename(final_output_path)
-                        print(f"{green_bold}[RENAMED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                    elif args.action == "copy":
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        final_output_path.write_bytes(file.read_bytes())
-                        print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                    elif args.action == "hardlink":  # NEW ACTION
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        if final_output_path.exists():
-                            # Check if destination file has same inode as source
-                            if os.stat(file).st_ino == os.stat(final_output_path).st_ino:
-                                if args.rename_hardlink:
-                                    # Remove existing hardlink and create new one with new name
-                                    final_output_path.unlink()
-                                    os.link(file, final_output_path)
-                                    print(f"{green_bold}[RENAMED HARDLINK]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                                else:
-                                    # Skip if rename_hardlink is false
-                                    print(f"{yellow}[SKIPPED]{reset} Hardlink already exists: {final_output_path}")
-                            else:
-                                print(f"{red}[ERROR]{reset} File exists with different inode: {final_output_path}")
-                        else:
-                            # Check for files with same inode in destination directory
-                            same_inode_files = [f for f in final_output_path.parent.iterdir() 
-                                              if f.is_file() and os.stat(f).st_ino == os.stat(file).st_ino]
-                            
-                            if same_inode_files:
-                                if args.rename_hardlink:
-                                    # Remove old hardlinks and create new one
-                                    for old_link in same_inode_files:
-                                        old_link.unlink()
-                                        print(f"{cyan}[REMOVED OLD HARDLINK]{reset} {old_link}")
-                                    os.link(file, final_output_path)
-                                    print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
-                                else:
-                                    # Keep existing hardlink
-                                    print(f"{yellow}[SKIPPED]{reset} Keeping existing hardlink: {same_inode_files[0]}")
-                            else:
-                                # Create new hardlink if no existing ones found
-                                os.link(file, final_output_path)
-                                print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
-                    file_processed = True
+                    dest_dir = Path(output_path) if output_path else file.parent
+                    final_output_path = dest_dir / new_file_name
+                    all_matches.append((score, season_number, tmdb_episode_number, local_episode_number, new_name, final_output_path))
                     break
 
-            if file_processed:
-                break
+    # PHASE 2: Pick the best match by quality score
+    if all_matches:
+        all_matches.sort(key=lambda x: x[0], reverse=True)
+        best_score, _, _, _, _, best_path = all_matches[0]
+        return True, best_path
 
-            if re.search(rf"S\d{{2}}E\d{{2,3}}", file.name, re.IGNORECASE) or \
-                re.search(rf"\b\d{{2}}x\d{{2,3}}\b", file.name, re.IGNORECASE) or \
-                re.search(rf"\d{{1,2}}xSpecial \d{{1,3}}", file.name, re.IGNORECASE):
-                continue
-
-            for next_pattern in next_patterns:
-                if re.search(next_pattern, normalize_filename(file.name), re.IGNORECASE):
-                    # print(f"{next_pattern} found in {file.name}")
-                    new_file_name = f"{new_name}{get_full_extension(file.name)}"
-                    final_output_path = (output_path if output_path else file.parent) / new_file_name
-
-                    output_parent = str(Path(final_output_path).parent)
-                    file_parent = str(Path(file).parent)
-
-                    if output_parent == file_parent:
-                        destin_file_name = str(Path(final_output_path).relative_to(output_parent))
-                        source_file_name = str(Path(file).relative_to(output_parent))
-                    else:
-                        destin_file_name = final_output_path
-                        source_file_name = file
-
-                    if final_output_path.exists():
-                        if args.action == "dry-run":
-                            print(f"{Fore.YELLOW}[DRY-RUN]{Style.RESET_ALL} {red_bold}[SKIPPING]{reset} {source_file_name} {Fore.YELLOW}->{Style.RESET_ALL} {destin_file_name} {red_bold}(Target file already exists){reset}")
-                        else:
-                            print(f"{red_bold}[SKIPPING]{reset} {source_file_name} {red_bold}->{reset} {destin_file_name} {red_bold}(Target file already exists){reset}")
-                        break
-
-                    if args.action == "dry-run":
-                        print(f"{yellow_bold}[DRY-RUN]{reset} {Fore.GREEN}[RENAME]{Style.RESET_ALL} {source_file_name} {yellow_bold}->{reset} {destin_file_name}")
-                    elif args.action == "rename":
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        file.rename(final_output_path)
-                        print(f"{green_bold}[RENAMED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                    elif args.action == "copy":
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        final_output_path.write_bytes(file.read_bytes())
-                        print(f"{green_bold}[COPIED]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                    elif args.action == "hardlink":  # NEW ACTION
-                        final_output_path.parent.mkdir(parents=True, exist_ok=True)
-                        if final_output_path.exists():
-                            # Check if destination file has same inode as source
-                            if os.stat(file).st_ino == os.stat(final_output_path).st_ino:
-                                if args.rename_hardlink:
-                                    # Remove existing hardlink and create new one with new name
-                                    final_output_path.unlink()
-                                    os.link(file, final_output_path)
-                                    print(f"{green_bold}[RENAMED HARDLINK]{reset} {source_file_name} {green_bold}->{reset} {destin_file_name}")
-                                else:
-                                    # Skip if rename_hardlink is false
-                                    print(f"{yellow}[SKIPPED]{reset} Hardlink already exists: {final_output_path}")
-                            else:
-                                print(f"{red}[ERROR]{reset} File exists with different inode: {final_output_path}")
-                        else:
-                            # Check for files with same inode in destination directory
-                            same_inode_files = [f for f in final_output_path.parent.iterdir() 
-                                              if f.is_file() and os.stat(f).st_ino == os.stat(file).st_ino]
-                            
-                            if same_inode_files:
-                                if args.rename_hardlink:
-                                    # Remove old hardlinks and create new one
-                                    for old_link in same_inode_files:
-                                        old_link.unlink()
-                                        print(f"{cyan}[REMOVED OLD HARDLINK]{reset} {old_link}")
-                                    os.link(file, final_output_path)
-                                    print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
-                                else:
-                                    # Keep existing hardlink
-                                    print(f"{yellow}[SKIPPED]{reset} Keeping existing hardlink: {same_inode_files[0]}")
-                            else:
-                                # Create new hardlink if no existing ones found
-                                os.link(file, final_output_path)
-                                print(f"{light_blue}[HARDLINKED]{reset} {source_file_name} {light_blue}->{reset} {destin_file_name}")
-                    file_processed = True
-                    break
-
-    return file_processed
+    return False, None

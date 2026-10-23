@@ -1,6 +1,22 @@
 # tvrename/utils.py
 import re
 import unicodedata
+from pathlib import Path
+
+# Color escape codes (centralized to avoid duplication across modules)
+yellow = "\033[33m"
+red = "\033[31m"
+green = "\033[32m"
+cyan = "\033[36m"
+
+yellow_bold = "\033[1;33m"
+red_bold = "\033[1;31m"
+green_bold = "\033[1;32m"
+
+light_blue = "\033[94m"
+
+reset = "\033[0m"
+
 
 def sanitize_filename(name):
     """Sanitizes a filename by removing or replacing invalid characters."""
@@ -11,11 +27,15 @@ def sanitize_filename(name):
     name = name.replace("/", "／")
     name = name.replace("!", "！")
     name = name.replace(";", "；")
+    name = name.replace("#", "＃")
     return re.sub(r'[<>:"/\\|?*]', '', name)
 
-def truncate_string(string, length):
-    """Truncates a string to a specified length."""
-    return string[:length] if len(string) > length else string
+def truncate_string(string, max_bytes):
+    """Truncates a string to a maximum byte length (UTF-8 encoded)."""
+    encoded = string.encode('utf-8')
+    if len(encoded) > max_bytes:
+        return encoded[:max_bytes].decode('utf-8', errors='ignore')
+    return string
 
 def apply_truncation(format_string, placeholder, value):
     """Applies truncation based on `.take({length})` syntax."""
@@ -44,7 +64,6 @@ def get_full_extension(filename):
                 lang_part = match.group(1) if match.group(1) else ''
                 return lang_part + ext
     # For non-subtitle files, return the standard suffix
-    from pathlib import Path
     return Path(filename).suffix
 
 def normalize_filename(filename):
