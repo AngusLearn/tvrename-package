@@ -11,7 +11,7 @@ license = {text = "MIT"}
 authors = [
     {name = "Angus Learn", email = "angus.learn@gmail.com"}
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"  # urllib3 2.8.0 (CVE-2026-97687/88/89) requires >=3.10
 dependencies = [
     "requests",
     "python-dotenv",
